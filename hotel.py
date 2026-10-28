@@ -18,23 +18,19 @@ class HotelSystem:
         if type(V) is not int or V < 1:
             raise ValueError("V must be a positive integer.")
 
-        buildings = []
-        node_line = []
         for i in range(N):
             building = Building(i)
-            buildings.append(building)
+            self.__building.append(building)
             for j in range(V):
                 node = Node(
                     self._hash_position(f"Build{i}:{j}"),
                     building,
                     j
                 )
-                node_line.append(node)
+                self.__node_line.append(node)
 
-        node_line.sort(key=lambda n: (n.id, n.building.id, n.node_ind))
-        self.__building = buildings
+        self.__node_line.sort(key=lambda n: (n.id, n.building.id, n.node_ind))
         self.__max_node = V
-        self.__node_line = node_line
         return
         
     def push_node(self, node: object):
