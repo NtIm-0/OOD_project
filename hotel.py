@@ -74,10 +74,7 @@ class HotelSystem:
         return self.find_node(position).building
 
     def push_node(self, node: object):
-        if self.__node_line == []:
-            self.__node_line.append(node)
-            return
-
+       
         node_key = (node.id, node.building.id, node.node_ind)
         for i in range(len(self.__node_line)):
             current = self.__node_line[i]
@@ -85,10 +82,94 @@ class HotelSystem:
             if node_key < current_key:
                 self.__node_line.insert(i, node)
                 return
+            
         self.__node_line.append(node)
 
     def get_guest(self, channel_id: int, sequence_id: int):
         return self.__guests.get((channel_id, sequence_id))
+    
+    # --------------------------------------------------- #
+    # ======= ADD/REMOVE GUEST FUNCTION ======= #
+    # --------------------------------------------------- #
+    
+    def add_guest(self, channel_id: int, sequence_id: int):
+        
+        if not self.__node_line:
+            raise ValueError("Hotel has not been initialized.")
+        if type(channel_id) is not int or channel_id < 1:
+            raise ValueError("Channel ID must be a positive integer.")
+        if type(sequence_id) is not int or sequence_id < 1:
+            raise ValueError("Sequence ID must be a positive integer.")
+        
+        guest_id = (channel_id, sequence_id)
+        if guest_id in self.__guests:
+            return False, f"Guest {guest_id} already exist."
+        
+        building = self.find_building(channel_id, sequence_id)
+        guest = Guest(channel_id, sequence_id, building)
+        room = Room(guest.room_no, guest)
+
+        building.add_room(room)
+        self.__guests[guest_id] = guest
+        self.__guests_per_channel[channel_id] = self.__guests_per_channel.get(channel_id, 0) + 1
+        
+        return True, guest
+
+    def add_guest_batch(self, channel_id: int, s_start: int, count: int):
+       
+        if not self.__node_line:
+            raise ValueError("Hotel has not been initialized.")
+        if type(channel_id) is not int or channel_id < 1:
+            raise ValueError("Channel ID must be a positive integer.")
+        if type(s_start) is not int or s_start < 1:
+            raise ValueError("Starting sequence ID must be a positive integer.")
+        if type(count) is not int or count < 0:
+            raise ValueError("Count must be a positive integer.")
+        
+        # 0 guests to be added = no change
+        if count == 0:
+            return True, ()
+
+        # if some guest already exist, deny all
+        for s in range(s_start, s_start + count):
+            if (channel_id, s) in self.__guests:
+                return False, f"Batch denied: Guest ({channel_id}, {s}) already exist."
+                
+        added_guests = []
+        for s in range(s_start, s_start + count):
+            building = self.find_building(channel_id, s)
+            guest = Guest(channel_id, s, building)
+            room = Room(guest.room_no, guest)
+
+            building.add_room(room)
+            self.__guests[guest.id] = guest
+            added_guests.append(guest)
+
+        self.__guests_per_channel[channel_id] = self.__guests_per_channel.get(channel_id, 0) + count
+        return True, tuple(added_guests)
+    
+    def remove_guest(self, channel_id: int, sequence_id: int):
+        
+        if type(channel_id) is not int or channel_id < 1:
+            raise ValueError("Channel ID must be a positive integer.")
+        if type(sequence_id) is not int or sequence_id < 1:
+            raise ValueError("Sequence ID must be a positive integer.")
+
+        guest_id = (channel_id, sequence_id)
+        guest = self.__guests.get(guest_id)
+
+        if guest is None:
+            return False, f"Guest {guest_id} does not exist."
+
+        guest.building.remove_room(guest.room_no)
+        del self.__guests[guest_id]
+
+        if channel_id in self.__guests_per_channel:
+            self.__guests_per_channel[channel_id] -= 1
+            if self.__guests_per_channel[channel_id] <= 0:
+                del self.__guests_per_channel[channel_id]
+
+        return True, guest
 
     @property
     def buildings(self):
@@ -158,6 +239,10 @@ class Guest:
     @property
     def room_no(self):
         return self.__room_no
+    
+    @building.setter
+    def building(self, new_building):
+        self.__building = new_building
 
 
 class Building:
@@ -174,6 +259,11 @@ class Building:
 
     def get_room(self, room_id: int):
         return self.__rooms.get(room_id)
+    
+    def remove_room(self, room_id: int):
+        if room_id not in self.__rooms:
+            raise ValueError("Room does not exist.")
+        return self.__rooms.pop(room_id)
 
     @property
     def id(self):

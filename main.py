@@ -47,6 +47,29 @@ def show_initial_state(hotel, preview_limit=20):
         )
     if hotel.guest_count > preview_limit:
         print(f"Showing {preview_limit} of {hotel.guest_count} guests.")
+        
+def show_state(hotel, preview_limit=20):
+    print(f"Buildings: {hotel.building_count}")
+    print(f"Virtual nodes: {hotel.node_count} ({hotel.max_node} per building)")
+    print(f"Channels: {hotel.channel_count}")
+    print(f"Guests: {hotel.guest_count}")
+
+    for building in hotel.buildings:
+        print(f"Building {building.id}: {building.guest_count} guests")
+
+    if hotel.guest_count == 0:
+        print("No guests checked in.")
+        return
+
+    print("\nInitial guests (channel order):")
+    print("channel_id sequence_id building_id room_no")
+    for guest in hotel.guests[:preview_limit]:
+        print(
+            f"{guest.channel_id} {guest.sequence_id} "
+            f"{guest.building.id} {guest.room_no}"
+        )
+    if hotel.guest_count > preview_limit:
+        print(f"Showing {preview_limit} of {hotel.guest_count} guests.")
 
 
 def main():
@@ -67,6 +90,23 @@ def main():
     hotel = HotelSystem()
     hotel.init_setting(N, V, guests_per_channel)
     show_initial_state(hotel)
+    
+    # testing adding/removing guest
+    c = int(input("Adding guest from channel: "))
+    s = int(input("Sequence: "))
+    print(f"Result: {hotel.add_guest(c, s)}")
+    show_state(hotel)
+    
+    c = int(input("Adding guest batch from channel: "))
+    s_start = int(input("Starting sequence: "))
+    count = int(input("Count: "))
+    print(f"Result: {hotel.add_guest_batch(c, s_start, count)}")
+    show_state(hotel)
+    
+    c = int(input("Removing guest from channel: "))
+    s = int(input("Sequence: "))
+    print(f"Result: {hotel.remove_guest(c, s)}")
+    show_state(hotel)
     
     return hotel
 
