@@ -3,7 +3,7 @@ import hashlib
 
 class HotelSystem:
     def __init__(self):
-        self.__building = []
+        self.__building = {}
         self.__max_node = 0
         self.__node_line = []
         self.__guests = {}
@@ -20,7 +20,7 @@ class HotelSystem:
 
         for i in range(N):
             building = Building(i)
-            self.__building.append(building)
+            self.__building[building.id] = building
             for node_ind in range(V):
                 node = Node(
                     self._hash_position(f"Build{i}:{node_ind}"),
@@ -100,16 +100,16 @@ class HotelSystem:
         if type(sequence_id) is not int or sequence_id < 1:
             raise ValueError("Sequence ID must be a positive integer.")
         
-        guest_id = (channel_id, sequence_id)
-        if guest_id in self.__guests:
-            return False, f"Guest {guest_id} already exist."
         
         building = self.find_building(channel_id, sequence_id)
         guest = Guest(channel_id, sequence_id, building)
         room = Room(guest.room_no, guest)
 
+        if guest.id in self.__guests:
+            return False, f"Guest {guest.id} already exist."
+        
         building.add_room(room)
-        self.__guests[guest_id] = guest
+        self.__guests[guest.id] = guest
         self.__guests_per_channel[channel_id] = self.__guests_per_channel.get(channel_id, 0) + 1
         
         return True, guest
@@ -169,10 +169,38 @@ class HotelSystem:
                 del self.__guests_per_channel[channel_id]
 
         return True, guest
+    
+    def search_by_guest(self, channel_id: int, sequence_id: int):
+        if type(channel_id) is not int or channel_id < 1:
+            raise ValueError("Channel ID must be a positive integer.")
+        if type(sequence_id) is not int or sequence_id < 1:
+            raise ValueError("Sequence ID must be a positive integer.")
+        
+        guest = self.get_guest(channel_id,sequence_id)
+        if guest is None:
+            return False, f"Guest ({channel_id},{sequence_id}) not found."
+        return True, (guest.building.id, guest.room_no)
+
+
+    def search_by_room(self, node_id: int, room_no: int):
+        if type(node_id) is not int or node_id < 1:
+            raise ValueError("Node ID must be a positive integer.")
+        if type(room_no) is not int or room_no < 1:
+            raise ValueError("Room ID must be a positive integer.")
+        
+        building = self.__building.get(node_id)
+        if building is None:
+            return False, f"Building {node_id} not found."
+        
+        room = building.get_room(room_no)
+        if room is None:
+            return False, f"Room {room_no} in building {node_id} not found."
+        return True, room.guest.id
+
 
     @property
     def buildings(self):
-        return tuple(self.__building)
+        return tuple(self.__building.values())
 
     @property
     def node_line(self):
@@ -209,9 +237,11 @@ class Guest:
             raise ValueError("Channel ID must be a positive integer.")
         if type(sequence_id) is not int or sequence_id < 1:
             raise ValueError("Sequence ID must be a positive integer.")
-
-        self.__channel_id = channel_id
-        self.__sequence_id = sequence_id
+        
+        # ----- แก้จากของเพื่อน เป็นใช้ element id แทน ----
+        # self.__channel_id = channel_id
+        # self.__sequence_id = sequence_id
+        self.__id = (channel_id,sequence_id)
         self.__building = building
 
         # Cantor pairing uses only the guest ID, never the building.
@@ -219,17 +249,21 @@ class Guest:
         b = sequence_id - 1
         self.__room_no = ((a + b) * (a + b + 1)) // 2 + b + 1
 
+    # @property
+    # def id(self):
+    #     return self.__channel_id, self.__sequence_id
+
     @property
     def id(self):
-        return self.__channel_id, self.__sequence_id
+        return self.__id
 
-    @property
-    def channel_id(self):
-        return self.__channel_id
+    # @property
+    # def channel_id(self):
+    #     return self.__channel_id
 
-    @property
-    def sequence_id(self):
-        return self.__sequence_id
+    # @property
+    # def sequence_id(self):
+    #     return self.__sequence_id
 
     @property
     def building(self):
