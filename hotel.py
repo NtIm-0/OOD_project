@@ -197,9 +197,38 @@ class HotelSystem:
             return False, f"Room {room_no} in building {node_id} not found."
         return True, room.guest.id
 
+    
+    def search_by_guest(self, channel_id: int, sequence_id: int):
+        if type(channel_id) is not int or channel_id < 1:
+            raise ValueError("Channel ID must be a positive integer.")
+        if type(sequence_id) is not int or sequence_id < 1:
+            raise ValueError("Sequence ID must be a positive integer.")
+        
+        guest = self.get_guest(channel_id,sequence_id)
+        if guest is None:
+            return False, f"Guest ({channel_id},{sequence_id}) not found."
+        return True, (guest.building.id, guest.room_no)
+
+
+    def search_by_room(self, node_id: int, room_no: int):
+        if type(node_id) is not int or node_id < 1:
+            raise ValueError("Node ID must be a positive integer.")
+        if type(room_no) is not int or room_no < 1:
+            raise ValueError("Room ID must be a positive integer.")
+        
+        building = self.__building.get(node_id)
+        if building is None:
+            return False, f"Building {node_id} not found."
+        
+        room = building.get_room(room_no)
+        if room is None:
+            return False, f"Room {room_no} in building {node_id} not found."
+        return True, room.guest.id
+
 
     @property
     def buildings(self):
+        return tuple(self.__building.values())
         return tuple(self.__building.values())
 
     @property
@@ -237,7 +266,8 @@ class Guest:
             raise ValueError("Channel ID must be a positive integer.")
         if type(sequence_id) is not int or sequence_id < 1:
             raise ValueError("Sequence ID must be a positive integer.")
-
+        
+        # ----- แก้จากของเพื่อน เป็นใช้ element id แทน ----
         # self.__channel_id = channel_id
         # self.__sequence_id = sequence_id
         self.__id = (channel_id,sequence_id)
