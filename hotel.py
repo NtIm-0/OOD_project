@@ -51,13 +51,13 @@ class HotelSystem:
             raise ValueError("Position must be an integer in the 64-bit range.")
 
         left = 0
-        right = len(self.__node_line)
-        while left < right:
+        right = len(self.__node_line) - 1
+        while left <= right:
             middle = (left + right) // 2
-            if self.__node_line[middle].id < position:
+            if position > self.__node_line[middle].id:
                 left = middle + 1
             else:
-                right = middle
+                right = middle - 1
 
         if left == len(self.__node_line):
             left = 0
@@ -74,7 +74,6 @@ class HotelSystem:
         return self.find_node(position).building
 
     def push_node(self, node: object):
-       
         node_key = (node.id, node.building.id, node.node_ind)
         for i in range(len(self.__node_line)):
             current = self.__node_line[i]
