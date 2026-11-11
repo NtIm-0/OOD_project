@@ -1,0 +1,10 @@
+Python: 3.14.0 (tags/v3.14.0:ebf955d, Oct  7 2025, 10:15:03) [MSC v.1944 64 bit (AMD64)]
+Platform: Windows-11-10.0.26200-SP0
+Processor: AMD64 Family 25 Model 68 Stepping 1, AuthenticAMD
+Salts: (0, 1, 2) (hash text = '<salt>:<text>')
+Channels: 10, guests split evenly
+Search batch: 1000 lookups, time divided per lookup
+A: N=10 V=32 K=1000/10000/100000
+B: K=10000 V=32 N=5/10/20; add building ID N, remove building ID 0
+C: N=10 K=10000 V=1/8/32
+Memory: tracemalloc (Python-tracked, not whole process), separate runs from timing
