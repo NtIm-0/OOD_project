@@ -366,8 +366,8 @@ class TestLoadStats(unittest.TestCase):
     def test_values_match_statistics_module(self):
         import statistics
         hotel = make_hotel(N=6, V=8, guests={c: 100 for c in range(1, 6)})
-        st = hotel.load_stats()
-        values = [n for _, n in st["counts"]]
+        st = hotel.load_report()
+        values = list(st["guests_per_building"].values()) 
         self.assertEqual(len(values), 6)              # every building listed
         self.assertEqual(sum(values), hotel.guest_count)
         self.assertEqual(st["max"], max(values))
@@ -381,28 +381,28 @@ class TestLoadStats(unittest.TestCase):
         hotel.add_building(50)
         for g in [g for g in hotel.guests if g.building.id == 50]:
             hotel.remove_guest(*g.id)
-        counts = dict(hotel.load_stats()["counts"])
+        counts = dict(hotel.load_report()["guests_per_building"])
         self.assertIn(50, counts)
         self.assertEqual(counts[50], 0)
-        self.assertEqual(hotel.load_stats()["min"], 0)
+        self.assertEqual(hotel.load_report()["min"], 0)
 
     def test_sorted_by_building_id(self):
         hotel = make_hotel(N=3, V=4)
         hotel.add_building(10)
         hotel.add_building(5)
-        ids = [b for b, _ in hotel.load_stats()["counts"]]
+        ids = list(hotel.load_report()["guests_per_building"])
         self.assertEqual(ids, sorted(ids))
 
     def test_no_guests(self):
-        st = make_hotel(N=4, V=4, guests={}).load_stats()
+        st = make_hotel(N=4, V=4, guests={}).load_report()
         self.assertEqual((st["max"], st["min"], st["mean"], st["std"]), (0, 0, 0, 0))
         self.assertIsNone(st["cv"])
-        self.assertEqual(len(st["counts"]), 4)
+        self.assertEqual(len(st["guests_per_building"]), 4)
 
     def test_more_vnodes_more_balanced(self):
         guests = {c: 1000 for c in range(1, 11)}
-        cv1 = make_hotel(N=10, V=1, guests=guests).load_stats()["cv"]
-        cv32 = make_hotel(N=10, V=32, guests=guests).load_stats()["cv"]
+        cv1 = make_hotel(N=10, V=1, guests=guests).load_report()["cv"]
+        cv32 = make_hotel(N=10, V=32, guests=guests).load_report()["cv"]
         self.assertLess(cv32, cv1)
 
 

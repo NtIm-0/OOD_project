@@ -196,7 +196,7 @@ class HotelSystem:
         self.__building[building_id] = new_building
         for j in range(self.__max_node):
             node = Node(self._node_position(building_id, j), new_building, j)
-            bisect.insort(self.__node_line, node, key=node.key)
+            bisect.insort(self.__node_line, node, key=lambda n: n.key)
  
         # ตรวจใหม่ทุกคน เทียบอาคารเดิมกับที่วงแหวนใหม่ให้มา
         to_move = []
@@ -254,8 +254,9 @@ class HotelSystem:
         k = len(self.__guests)
         if k > 0 :
             rate = len(moves)/k
+            note = None
         else:
-            rate = 0
+            rate = None
             note = "Move rate not computed because there are no guests (K = 0)."
         return {
             "action": action,
