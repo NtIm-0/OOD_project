@@ -41,10 +41,13 @@ def show_initial_state(hotel, preview_limit=20):
     print("\nInitial guests (channel order):")
     print("channel_id sequence_id building_id room_no")
     for guest in hotel.guests[:preview_limit]:
-        print(
-            f"{guest.channel_id} {guest.sequence_id} "
-            f"{guest.building.id} {guest.room_no}"
-        )
+        # print(
+        #     f"{guest.channel_id} {guest.sequence_id} "
+        #     f"{guest.building.id} {guest.room_no}"
+        # )
+        c, s = guest.id
+        print(f"{c} {s} {guest.building.id} {guest.room_no}")
+        
     if hotel.guest_count > preview_limit:
         print(f"Showing {preview_limit} of {hotel.guest_count} guests.")
         
@@ -64,13 +67,31 @@ def show_state(hotel, preview_limit=20):
     print("\nInitial guests (channel order):")
     print("channel_id sequence_id building_id room_no")
     for guest in hotel.guests[:preview_limit]:
-        print(
-            f"{guest.channel_id} {guest.sequence_id} "
-            f"{guest.building.id} {guest.room_no}"
-        )
+        # print(
+        #     f"{guest.channel_id} {guest.sequence_id} "
+        #     f"{guest.building.id} {guest.room_no}"
+        # )
+        c, s = guest.id
+        print(f"{c} {s} {guest.building.id} {guest.room_no}")
+        #ส่วนที่คอมเม้นไว้มันไม่มีใน hotel.py แล้ว
     if hotel.guest_count > preview_limit:
         print(f"Showing {preview_limit} of {hotel.guest_count} guests.")
 
+def show_move_report(report, preview_limit=20):
+    print(f"\nAction: {report['action']} building {report['building_id']}")
+    print(f"Moved: {report['moved_count']} of {report['guest_count']} guests")
+    if report["move_rate"] is None:
+        print("Move rate: not calculated (no guests)")
+    else:
+        print(f"Move rate: {report['move_rate']:.4f} ({report['move_rate'] * 100:.2f}%)")
+
+    if report["moved_count"] == 0:
+        return
+    print("channel_id sequence_id from_building to_building room_no")
+    for c, s, old, new, room in report["moves"][:preview_limit]:
+        print(f"{c} {s} {old} {new} {room}")
+    if report["moved_count"] > preview_limit:
+        print(f"Showing {preview_limit} of {report['moved_count']} moves.")
 
 def main():
     N, V = read_ring_settings()
@@ -92,24 +113,45 @@ def main():
     show_initial_state(hotel)
     
     # testing adding/removing guest
-    c = int(input("Adding guest from channel: "))
-    s = int(input("Sequence: "))
-    print(f"Result: {hotel.add_guest(c, s)}")
-    show_state(hotel)
-    
-    c = int(input("Adding guest batch from channel: "))
-    s_start = int(input("Starting sequence: "))
-    count = int(input("Count: "))
-    print(f"Result: {hotel.add_guest_batch(c, s_start, count)}")
-    show_state(hotel)
-    
-    c = int(input("Removing guest from channel: "))
-    s = int(input("Sequence: "))
-    print(f"Result: {hotel.remove_guest(c, s)}")
-    show_state(hotel)
-    
-    return hotel
+    try :
+        c = int(input("Adding guest from channel: "))
+        s = int(input("Sequence: "))
+        print(f"Result: {hotel.add_guest(c, s)}")
+        show_state(hotel)
+        
+        c = int(input("Adding guest batch from channel: "))
+        s_start = int(input("Starting sequence: "))
+        count = int(input("Count: "))
+        print(f"Result: {hotel.add_guest_batch(c, s_start, count)}")
+        show_state(hotel)
+        
+        c = int(input("Removing guest from channel: "))
+        s = int(input("Sequence: "))
+        print(f"Result: {hotel.remove_guest(c, s)}")
+        show_state(hotel)
+    #เพิ่มการ add / remove buliding
+        b = int(input("Add building id: "))
+        ok, result = hotel.add_building(b)
+        if ok:
+            show_move_report(result)
+        else:
+            print(f"Result: {result}")
+        show_state(hotel)
 
+        b = int(input("Remove building id: "))
+        ok, result = hotel.remove_building(b)
+        if ok:
+            show_move_report(result)
+        else:
+            print(f"Result: {result}")
+        show_state(hotel)
+        
+        return hotel
+
+    except ValueError as e:
+        print(f"Error: {e}")
+
+#ถ้าพิมพ์ c = 0 จะ error เลยใส่ try ครอบ
 
 if __name__ == "__main__":
     try:
