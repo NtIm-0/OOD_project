@@ -18,9 +18,9 @@ class HotelSystem:
     def _node_position(self, building_id: int, j: int):
         return self._hash_position(f"node:{building_id}:{j}")
  
-    @staticmethod
-    def _node_key(node):
-        return (node.id, node.building.id, node.node_ind)
+    # @staticmethod
+    # def _node_key(node):
+    #     return (node.id, node.building.id, node.node_ind)
 
     def init_setting(self, N, V, guests_per_channel):  ## เรียกครั้งเดียวตอน run 
         self.__max_node = V
@@ -92,12 +92,13 @@ class HotelSystem:
             
         self.__node_line.append(node)
 
-    def get_guest(self, channel_id: int, sequence_id: int):
-        return self.__guests.get((channel_id, sequence_id))
     
     # --------------------------------------------------- #
     # ======= ADD/REMOVE GUEST FUNCTION ======= #
     # --------------------------------------------------- #
+    
+    def get_guest(self, channel_id: int, sequence_id: int):
+        return self.__guests.get((channel_id, sequence_id))
     
     def add_guest(self, channel_id: int, sequence_id: int):
         
@@ -195,7 +196,7 @@ class HotelSystem:
         self.__building[building_id] = new_building
         for j in range(self.__max_node):
             node = Node(self._node_position(building_id, j), new_building, j)
-            bisect.insort(self.__node_line, node, key=self._node_key)
+            bisect.insort(self.__node_line, node, key=node.key)
  
         # ตรวจใหม่ทุกคน เทียบอาคารเดิมกับที่วงแหวนใหม่ให้มา
         to_move = []
@@ -251,13 +252,19 @@ class HotelSystem:
  
     def _move_report(self, action, building_id, moves):
         k = len(self.__guests)
+        if k > 0 :
+            rate = len(moves)/k
+        else:
+            rate = 0
+            note = "Move rate not computed because there are no guests (K = 0)."
         return {
             "action": action,
             "building_id": building_id,
             "guest_count": k,
             "moved_count": len(moves),
-            "move_rate": len(moves) / k if k > 0 else None,
-            "moves": tuple(moves),  # (c, s, old_building, new_building, room_no)
+            "move_rate": rate,
+            "note": note,
+            "moves": tuple(moves)  # (c, s, old_building, new_building, room_no)
         } 
     
     def search_by_guest(self, channel_id: int, sequence_id: int):
@@ -267,6 +274,7 @@ class HotelSystem:
             raise ValueError("Sequence ID must be a positive integer.")
         
         guest = self.get_guest(channel_id,sequence_id)
+
         if guest is None:
             return False, f"Guest ({channel_id},{sequence_id}) not found."
         return True, (guest.building.id, guest.room_no)
@@ -301,6 +309,40 @@ class HotelSystem:
                 c, s = room.guest.id
                 rows.append((building_id, room.id, c, s))
         return tuple(rows)
+    
+    def load_report(self):
+        guests_per_building = {
+            building_id : build.guest_count for building_id, build in sorted(self.__building.items())
+        }
+
+        n = len(guests_per_building)
+        load = list(guests_per_building.values())
+        total_load = sum(load)
+        if total_load == 0:
+            return {
+                "guests_per_building" : guests_per_building,
+                "max" : 0,
+                "min" : 0,
+                "mean" : 0,
+                "cv" : None,
+                "note" : "CV not computed because there are no guests (K = 0)."
+            }
+        max_load = max(load)
+        mean_load = total_load / n
+        min_load = min(load)
+        variance = sum((x - mean_load) ** 2 for x in load) / n
+        std = variance ** 0.5
+        cv = std / mean_load
+        return {
+            "guests_per_building" : guests_per_building,
+            "max" : max_load,
+            "min" : min_load,
+            "mean" : mean_load,
+            "cv" : cv,
+            "note" : None
+        }
+
+
 
     @property
     def buildings(self):
@@ -432,6 +474,10 @@ class Node:
     @property 
     def building(self):
         return self.__building
+    
+    @property
+    def key(node):
+        return (node.id, node.building.id, node.node_ind)
 
 
 class Room:
