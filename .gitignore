@@ -1,0 +1,14 @@
+# Python cache (created automatically every run)
+__pycache__/
+*.pyc
+
+# CSV written by the menu (main.py -> option 11)
+output/
+
+# Editor / OS files
+.vscode/
+.DS_Store
+Thumbs.db
+
+# results/ (experiment CSV + graphs) is NOT ignored on purpose:
+# the project must submit those files.

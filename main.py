@@ -1,31 +1,57 @@
-from hotel import HotelSystem
+"""Text menu for the Distributed Hilbert's Hotel.
 
+Run:  python main.py
+
+All logic lives in hotel.py; this file only reads input and prints results.
+Bad input is refused with a message and the menu keeps running.
+"""
+import os
+
+from hotel import HotelSystem
+from export_csv import export_guests, export_moves, export_load_report
+
+PREVIEW = 20                 # rows shown on screen; files always have everything
+OUT_DIR = "output"
+
+
+# ------------------------------------------------------------------ #
+# Reading input (asks again instead of stopping the program)
+# ------------------------------------------------------------------ #
 def read_int(prompt, minimum):
-    try:
-        value = int(input(prompt))
-    except ValueError:
-        print("Input must be an integer. Please run the program again.")
-        return -1
-    if value < minimum:
-        print(f"Input must be an integer >= {minimum}. Please run the program again.")
-        return -1
-    return value
+    while True:
+        try:
+            value = int(input(prompt))
+        except ValueError:
+            print("Input must be an integer. Try again.")
+            continue
+        if value < minimum:
+            print(f"Input must be an integer >= {minimum}. Try again.")
+            continue
+        return value
 
 
 def read_ring_settings():
-    try:
-        N, V = map(int, input("Enter N V: ").split())
-    except ValueError:
-        print("Enter two integers for N V. Please run the program again.")
-        return -1, -1
-    if N < 1 or V < 1:
-        print("N and V must both be positive integers. Please run the program again.")
-        return -1, -1
-    return N, V
+    while True:
+        try:
+            N, V = map(int, input("Enter N V: ").split())
+        except ValueError:
+            print("Enter two integers for N V, e.g. 10 32. Try again.")
+            continue
+        if N < 1 or V < 1:
+            print("N and V must both be positive integers. Try again.")
+            continue
+        return N, V
 
 
-def show_initial_state(hotel, preview_limit=20):
+# ------------------------------------------------------------------ #
+# Display helpers
+# ------------------------------------------------------------------ #
+def show_initial_state(hotel, preview_limit=PREVIEW):
     print("\nInitialization complete.")
+    show_state(hotel, preview_limit)
+
+
+def show_state(hotel, preview_limit=PREVIEW):
     print(f"Buildings: {hotel.building_count}")
     print(f"Virtual nodes: {hotel.node_count} ({hotel.max_node} per building)")
     print(f"Channels: {hotel.channel_count}")
@@ -38,46 +64,16 @@ def show_initial_state(hotel, preview_limit=20):
         print("No guests checked in.")
         return
 
-    print("\nInitial guests (channel order):")
+    print("\nGuests (check-in order):")
     print("channel_id sequence_id building_id room_no")
     for guest in hotel.guests[:preview_limit]:
-        # print(
-        #     f"{guest.channel_id} {guest.sequence_id} "
-        #     f"{guest.building.id} {guest.room_no}"
-        # )
         c, s = guest.id
         print(f"{c} {s} {guest.building.id} {guest.room_no}")
-        
-    if hotel.guest_count > preview_limit:
-        print(f"Showing {preview_limit} of {hotel.guest_count} guests.")
-        
-def show_state(hotel, preview_limit=20):
-    print(f"Buildings: {hotel.building_count}")
-    print(f"Virtual nodes: {hotel.node_count} ({hotel.max_node} per building)")
-    print(f"Channels: {hotel.channel_count}")
-    print(f"Guests: {hotel.guest_count}")
-
-    for building in hotel.buildings:
-        print(f"Building {building.id}: {building.guest_count} guests")
-
-    if hotel.guest_count == 0:
-        print("No guests checked in.")
-        return
-
-    print("\nInitial guests (channel order):")
-    print("channel_id sequence_id building_id room_no")
-    for guest in hotel.guests[:preview_limit]:
-        # print(
-        #     f"{guest.channel_id} {guest.sequence_id} "
-        #     f"{guest.building.id} {guest.room_no}"
-        # )
-        c, s = guest.id
-        print(f"{c} {s} {guest.building.id} {guest.room_no}")
-        #ส่วนที่คอมเม้นไว้มันไม่มีใน hotel.py แล้ว
     if hotel.guest_count > preview_limit:
         print(f"Showing {preview_limit} of {hotel.guest_count} guests.")
 
-def show_move_report(report, preview_limit=20):
+
+def show_move_report(report, preview_limit=PREVIEW):
     print(f"\nAction: {report['action']} building {report['building_id']}")
     print(f"Moved: {report['moved_count']} of {report['guest_count']} guests")
     if report["move_rate"] is None:
@@ -93,6 +89,7 @@ def show_move_report(report, preview_limit=20):
     if report["moved_count"] > preview_limit:
         print(f"Showing {preview_limit} of {report['moved_count']} moves.")
 
+
 def show_load_report(hotel):
     report = hotel.load_report()
     print("\nLoad balance:")
@@ -106,7 +103,6 @@ def show_load_report(hotel):
     else:
         print(f"CV: {report['cv']:.4f}")
 
-# แสดงการ search
 
 def show_search_by_guest(hotel, c, s):
     ok, result = hotel.search_by_guest(c, s)
@@ -126,7 +122,7 @@ def show_search_by_room(hotel, building_id, room_no):
         print(f"Not found: {result}")
 
 
-def show_rooms(hotel, preview_limit=20):
+def show_rooms(hotel, preview_limit=PREVIEW):
     rows = hotel.list_rooms()
     print(f"\nOccupied rooms: {len(rows)}")
     if not rows:
@@ -138,84 +134,171 @@ def show_rooms(hotel, preview_limit=20):
     if len(rows) > preview_limit:
         print(f"Showing {preview_limit} of {len(rows)} rooms.")
 
-def main():
+
+# ------------------------------------------------------------------ #
+# Menu actions (each one reads its own input)
+# ------------------------------------------------------------------ #
+def do_add_guest(hotel, state):
+    c = read_int("Channel: ", 1)
+    s = read_int("Sequence: ", 1)
+    ok, result = hotel.add_guest(c, s)
+    if ok:
+        print(f"Added guest {result.id} -> building {result.building.id}, "
+              f"room {result.room_no}")
+    else:
+        print(f"Refused: {result}")
+
+
+def do_add_batch(hotel, state):
+    c = read_int("Channel: ", 1)
+    s_start = read_int("Starting sequence: ", 1)
+    count = read_int("Count (0 or more): ", 0)
+    ok, result = hotel.add_guest_batch(c, s_start, count)
+    if ok:
+        print(f"Added {len(result)} guests: ({c}, {s_start}) .. ({c}, {s_start + count - 1})"
+              if result else "Count is 0: nothing changed.")
+    else:
+        print(f"Refused (nothing added): {result}")
+
+
+def do_remove_guest(hotel, state):
+    c = read_int("Channel: ", 1)
+    s = read_int("Sequence: ", 1)
+    ok, result = hotel.remove_guest(c, s)
+    print(f"Removed guest {result.id}" if ok else f"Refused: {result}")
+
+
+def do_add_building(hotel, state):
+    b = read_int("New building id: ", 0)
+    ok, result = hotel.add_building(b)
+    if ok:
+        show_move_report(result)
+        state["last_moves"] = result
+    else:
+        print(f"Refused: {result}")
+
+
+def do_remove_building(hotel, state):
+    b = read_int("Building id to remove: ", 0)
+    ok, result = hotel.remove_building(b)
+    if ok:
+        show_move_report(result)
+        state["last_moves"] = result
+    else:
+        print(f"Refused: {result}")
+
+
+def do_search_guest(hotel, state):
+    show_search_by_guest(hotel, read_int("Channel: ", 1), read_int("Sequence: ", 1))
+
+
+def do_search_room(hotel, state):
+    show_search_by_room(hotel, read_int("Building id: ", 0), read_int("Room no: ", 1))
+
+
+def do_export(hotel, state):
+    guests_path = os.path.join(OUT_DIR, "guests.csv")
+    n = export_guests(hotel, guests_path)
+    print(f"Saved {guests_path} ({n} rows, {hotel.guest_count} guests in system)")
+
+    load_path = os.path.join(OUT_DIR, "load_report.csv")
+    export_load_report(hotel, load_path)
+    print(f"Saved {load_path}")
+
+    report = state.get("last_moves")
+    if report is None:
+        print("No move list yet (add or remove a building first).")
+    else:
+        name = f"moves_{report['action']}_{report['building_id']}.csv"
+        moves_path = os.path.join(OUT_DIR, name)
+        m = export_moves(report, moves_path)
+        print(f"Saved {moves_path} ({m} moves)")
+
+
+def do_experiments(hotel, state):
+    print("Runs experiments A, B, C with salts 0, 1, 2 (about 30 seconds).")
+    if input("Start? (y/n): ").strip().lower() != "y":
+        print("Cancelled.")
+        return
+    import measure
+    os.makedirs(measure.OUT_DIR, exist_ok=True)
+    measure.experiment_a()
+    measure.experiment_b()
+    measure.experiment_c()
+    measure.write_run_info()
+    try:
+        import plots
+    except ImportError:
+        print("matplotlib is not installed: run 'pip install matplotlib', "
+              "then 'python plots.py' to draw the graphs.")
+        return
+    jobs = [("exp_A.csv", plots.plot_time_vs_k),
+            ("exp_B.csv", plots.plot_move_rate_vs_n),
+            ("exp_C.csv", plots.plot_v_effect)]
+    for name, plot in jobs:
+        plot(plots.read_rows(os.path.join(measure.OUT_DIR, name)),
+             os.path.join(measure.OUT_DIR, "figures"))
+
+
+MENU = [
+    ("Show state", lambda h, st: show_state(h)),
+    ("Add guest", do_add_guest),
+    ("Add guest batch", do_add_batch),
+    ("Remove guest", do_remove_guest),
+    ("Add building", do_add_building),
+    ("Remove building", do_remove_building),
+    ("Search by guest (c, s)", do_search_guest),
+    ("Search by room (node_id, room_no)", do_search_room),
+    ("List occupied rooms (sorted)", lambda h, st: show_rooms(h)),
+    ("Load balance report", lambda h, st: show_load_report(h)),
+    ("Export CSV (guests, load, last moves)", do_export),
+    ("Run experiments A/B/C and draw graphs", do_experiments),
+]
+
+
+def print_menu():
+    print("\n========== MENU ==========")
+    for i, (label, _) in enumerate(MENU, start=1):
+        print(f"{i:2d}. {label}")
+    print(" 0. Exit")
+
+
+# ------------------------------------------------------------------ #
+def setup():
     N, V = read_ring_settings()
-    if N == -1:
-        return
     channel_count = read_int("Number of channels (0 or more): ", 0)
-    if channel_count == -1:
-        return
-    
     guests_per_channel = {}
     for channel_id in range(1, channel_count + 1):
-        count = read_int(f"Guests in channel {channel_id} (0 or more): ", 0)
-        if count == -1:
-            return
-        guests_per_channel[channel_id] = count
-
+        guests_per_channel[channel_id] = read_int(
+            f"Guests in channel {channel_id} (0 or more): ", 0)
     hotel = HotelSystem()
     hotel.init_setting(N, V, guests_per_channel)
     show_initial_state(hotel)
-    show_load_report(hotel)
-    
-    # testing adding/removing guest
-    try :
-        c = int(input("Adding guest from channel: "))
-        s = int(input("Sequence: "))
-        print(f"Result: {hotel.add_guest(c, s)}")
-        show_state(hotel)
-        show_load_report(hotel)
-        
-        c = int(input("Adding guest batch from channel: "))
-        s_start = int(input("Starting sequence: "))
-        count = int(input("Count: "))
-        print(f"Result: {hotel.add_guest_batch(c, s_start, count)}")
-        show_state(hotel)
-        show_load_report(hotel)
-        
-        c = int(input("Removing guest from channel: "))
-        s = int(input("Sequence: "))
-        print(f"Result: {hotel.remove_guest(c, s)}")
-        show_state(hotel)
-        show_load_report(hotel)
-    #เพิ่มการ add / remove buliding
-        b = int(input("Add building id: "))
-        ok, result = hotel.add_building(b)
-        if ok:
-            show_move_report(result)
-        else:
-            print(f"Result: {result}")
-        show_state(hotel)
+    return hotel
 
-        b = int(input("Remove building id: "))
-        ok, result = hotel.remove_building(b)
-        if ok:
-            show_move_report(result)
-        else:
-            print(f"Result: {result}")
-        show_state(hotel)
 
-    # search both ways + list occupied rooms
+def main():
+    hotel = setup()
+    state = {"last_moves": None}
+    while True:
+        print_menu()
+        choice = read_int("Choose: ", 0)
+        if choice == 0:
+            print("Goodbye.")
+            return hotel
+        if choice > len(MENU):
+            print(f"Choose 0 to {len(MENU)}.")
+            continue
+        label, action = MENU[choice - 1]
+        print(f"\n--- {label} ---")
+        try:
+            action(hotel, state)
+        except ValueError as e:          # refused politely; data unchanged
+            print(f"Error: {e}")
 
-        c = int(input("Search guest - channel: "))
-        s = int(input("Search guest - sequence: "))
-        show_search_by_guest(hotel, c, s)
-
-        b = int(input("Search room - building id: "))
-        r = int(input("Search room - room no: "))
-        show_search_by_room(hotel, b, r)
-
-        show_rooms(hotel)
-        
-        return hotel
-
-    except ValueError as e:
-        print(f"Error: {e}")
-
-#ถ้าพิมพ์ c = 0 จะ error เลยใส่ try ครอบ
 
 if __name__ == "__main__":
     try:
         main()
     except (EOFError, KeyboardInterrupt):
-        print("\nInitialization cancelled.")
+        print("\nProgram closed.")
