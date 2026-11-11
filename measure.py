@@ -147,6 +147,7 @@ def summarize(rounds, keys):
     return summary
 
 
+
 TIMING_KEYS = (
     "t_build_ring", "t_seat_guests", "t_search_guest", "t_search_room",
     "t_find_building", "t_list_rooms", "t_add_building", "t_remove_building",
@@ -169,21 +170,30 @@ def write_csv(path, rows):
         writer.writeheader()
         writer.writerows(rows)
 
-
-if __name__ == "__main__":
-    # Experiment A: vary K, fixed N = 10, V = 32
-    all_timing, all_memory = [], []
-    for K in (1_000, 10_000, 100_000):
-        t_rounds, m_rounds = measure(N=10, V=32, K=K)
+def run_experiment(title, configs, all_timing, all_memory):
+    print(f"------------- {title} ------------")
+    for N, V, K in configs:
+        t_rounds, m_rounds = measure(N=N, V=V, K=K)
+        for r in t_rounds + m_rounds:
+            r["experiment"] = title[:6]
         all_timing += t_rounds
         all_memory += m_rounds
 
-        print(f"\n=== N=10 V=32 K={K:,} (median of {len(SALTS)} rounds, min-max) ===")
+        print(f"\n=== N={N} V={V} K={K:,} (median of {len(SALTS)} rounds, min-max) ===")
         for key, v in summarize(t_rounds, TIMING_KEYS).items():
             print(f"{key:20s} {v['median']:.6f} s  [{v['min']:.6f} - {v['max']:.6f}]")
         for key, v in summarize(m_rounds, MEMORY_KEYS).items():
             print(f"{key:20s} {v['median']:.3f} MiB  [{v['min']:.3f} - {v['max']:.3f}]")
 
+if __name__ == "__main__":
+    # Experiment A: vary K, fixed N = 10, V = 32
+    all_timing, all_memory = [], []
+    run_experiment("Test A : K = 1,000; 10,000; 100,000",
+                   [(10, 32, K) for K in (1_000, 10_000, 100_000)], all_timing, all_memory)
+    run_experiment("Test B : N = 5; 10; 20",
+                   [(N, 32, 10_000) for N in (5, 10, 20)], all_timing, all_memory)
+    run_experiment("Test C : V = 1; 8; 32",
+                   [(10, V, 10_000) for V in (1, 8, 32)], all_timing, all_memory)
     write_csv("timing_results.csv", all_timing)
     write_csv("memory_results.csv", all_memory)
     print("\nSaved timing_results.csv and memory_results.csv")
