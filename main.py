@@ -93,6 +93,38 @@ def show_move_report(report, preview_limit=20):
     if report["moved_count"] > preview_limit:
         print(f"Showing {preview_limit} of {report['moved_count']} moves.")
 
+# แสดงการ search
+
+def show_search_by_guest(hotel, c, s):
+    ok, result = hotel.search_by_guest(c, s)
+    if ok:
+        building_id, room_no = result
+        print(f"Guest ({c}, {s}) -> building {building_id}, room {room_no}")
+    else:
+        print(f"Not found: {result}")
+
+
+def show_search_by_room(hotel, building_id, room_no):
+    ok, result = hotel.search_by_room(building_id, room_no)
+    if ok:
+        c, s = result
+        print(f"Building {building_id}, room {room_no} -> guest ({c}, {s})")
+    else:
+        print(f"Not found: {result}")
+
+
+def show_rooms(hotel, preview_limit=20):
+    rows = hotel.list_rooms()
+    print(f"\nOccupied rooms: {len(rows)}")
+    if not rows:
+        print("No occupied rooms.")
+        return
+    print("building_id room_no channel_id sequence_id")
+    for building_id, room_no, c, s in rows[:preview_limit]:
+        print(f"{building_id} {room_no} {c} {s}")
+    if len(rows) > preview_limit:
+        print(f"Showing {preview_limit} of {len(rows)} rooms.")
+
 def main():
     N, V = read_ring_settings()
     if N == -1:
@@ -145,6 +177,18 @@ def main():
         else:
             print(f"Result: {result}")
         show_state(hotel)
+
+    # search both ways + list occupied rooms
+
+        c = int(input("Search guest - channel: "))
+        s = int(input("Search guest - sequence: "))
+        show_search_by_guest(hotel, c, s)
+
+        b = int(input("Search room - building id: "))
+        r = int(input("Search room - room no: "))
+        show_search_by_room(hotel, b, r)
+
+        show_rooms(hotel)
         
         return hotel
 
