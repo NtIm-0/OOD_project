@@ -93,6 +93,19 @@ def show_move_report(report, preview_limit=20):
     if report["moved_count"] > preview_limit:
         print(f"Showing {preview_limit} of {report['moved_count']} moves.")
 
+def show_load_report(hotel):
+    report = hotel.load_report()
+    print("\nLoad balance:")
+    print("building_id guests")
+    for building_id, count in report["guests_per_building"].items():
+        print(f"{building_id} {count}")
+    print(f"Max: {report['max']}  Min: {report['min']}")
+    print(f"Mean: {report['mean']:.2f}  Std: {report['std']:.2f}")
+    if report["cv"] is None:
+        print(f"CV: not calculated ({report['note']})")
+    else:
+        print(f"CV: {report['cv']:.4f}")
+
 # แสดงการ search
 
 def show_search_by_guest(hotel, c, s):
@@ -143,6 +156,7 @@ def main():
     hotel = HotelSystem()
     hotel.init_setting(N, V, guests_per_channel)
     show_initial_state(hotel)
+    show_load_report(hotel)
     
     # testing adding/removing guest
     try :
@@ -150,17 +164,20 @@ def main():
         s = int(input("Sequence: "))
         print(f"Result: {hotel.add_guest(c, s)}")
         show_state(hotel)
+        show_load_report(hotel)
         
         c = int(input("Adding guest batch from channel: "))
         s_start = int(input("Starting sequence: "))
         count = int(input("Count: "))
         print(f"Result: {hotel.add_guest_batch(c, s_start, count)}")
         show_state(hotel)
+        show_load_report(hotel)
         
         c = int(input("Removing guest from channel: "))
         s = int(input("Sequence: "))
         print(f"Result: {hotel.remove_guest(c, s)}")
         show_state(hotel)
+        show_load_report(hotel)
     #เพิ่มการ add / remove buliding
         b = int(input("Add building id: "))
         ok, result = hotel.add_building(b)

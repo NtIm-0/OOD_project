@@ -324,6 +324,7 @@ class HotelSystem:
                 "max" : 0,
                 "min" : 0,
                 "mean" : 0,
+                "std": 0.0,
                 "cv" : None,
                 "note" : "CV not computed because there are no guests (K = 0)."
             }
@@ -338,6 +339,7 @@ class HotelSystem:
             "max" : max_load,
             "min" : min_load,
             "mean" : mean_load,
+            "std": std,
             "cv" : cv,
             "note" : None
         }
