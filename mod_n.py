@@ -1,26 +1,14 @@
-"""hash mod N: the simple method that consistent hashing is compared against.
-
-Rules (project section 7.1):
-- Keep building IDs in the order they were added.
-- A guest goes to the building at index H(guest) mod N of that list.
-- Adding a building appends it; removing one deletes it and keeps the
-  order of the rest.
-- Moves are compared by real building ID, not by list index.
-
-The guest hash text and the salt format are the same as SaltedHotel in
-measure.py, so both methods see exactly the same guest positions.
-"""
 import hashlib
 
 
 class ModNHotel:
     def __init__(self, salt=""):
         self.__salt = str(salt)
-        self.__order = []    # building IDs in the order they were added
-        self.__place = {}    # (c, s) -> building_id
+        self.__order = []
+        self.__place = {}
 
     # ---------------------------------------------------------------- #
-    # Hashing (same as HotelSystem: SHA-256, first 8 bytes, big-endian)
+    # Hashing
     # ---------------------------------------------------------------- #
     def _hash_position(self, text: str):
         data = f"{self.__salt}:{text}".encode("utf-8")
@@ -95,7 +83,6 @@ class ModNHotel:
             "moves": tuple(moves),   # (c, s, old_building, new_building, room_no)
         }
 
-    # ---------------------------------------------------------------- #
     @property
     def buildings(self):
         return tuple(self.__order)

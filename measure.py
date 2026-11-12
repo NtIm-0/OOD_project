@@ -1,22 +1,3 @@
-"""Experiments A, B, C (project section 7) -> CSV files for plots.py.
-
-Run:   python measure.py            (about 30 seconds)
-Then:  python plots.py
-
-Output (folder results/):
-  exp_A.csv   time and memory vs K          (N = 10, V = 32)
-  exp_B.csv   moves: consistent vs mod N    (K = 10,000, V = 32)
-  exp_C.csv   balance and memory vs V       (N = 10, K = 10,000)
-  exp_C_loads.csv  guests in every building for each V and salt
-  guests_sample_N10_V32_K10000_salt0.csv  sample guest data
-  moves_*.csv example move lists (guest id, old/new building, room)
-  run_info.txt Python version, machine, salts and parameters
-
-Every setting runs 3 times with salt 0, 1, 2. Both methods in the same
-round use the same salt, guest IDs and building IDs. Memory is measured in
-separate runs from timing, and is what Python tracks (tracemalloc), not the
-whole process.
-"""
 import csv
 import os
 import platform
@@ -36,13 +17,6 @@ OUT_DIR = "results"
 
 
 class SaltedHotel(HotelSystem):
-    """HotelSystem whose every hash text gets a salt prefix.
-
-    _hash_position has a single underscore, so it can be overridden
-    without touching hotel.py. Same salt -> same ring and same guest
-    positions, so two methods can be compared fairly.
-    """
-
     def __init__(self, salt):
         super().__init__()
         self._salt = str(salt)
@@ -52,13 +26,11 @@ class SaltedHotel(HotelSystem):
 
 
 def split_guests(K, channels=CHANNELS):
-    """Spread K guests over channels 1..channels as evenly as possible."""
     base, extra = divmod(K, channels)
     return {c: base + (1 if c <= extra else 0) for c in range(1, channels + 1)}
 
 
 def build_system(N, V, K, salt):
-    """Build ring, then seat guests."""
     hotel = SaltedHotel(salt)
     hotel.init_setting(N, V, {})
     for c, count in split_guests(K).items():
@@ -73,17 +45,16 @@ def build_mod_n(N, K, salt):
     return hotel
 
 
-MS = 1_000          # seconds -> milliseconds
-US = 1_000_000      # seconds -> microseconds
+MS = 1_000
+US = 1_000_000
 MIB = 1024 ** 2
 KIB = 1024
 
 
 # ------------------------------------------------------------------ #
-# Timing (time.perf_counter). No input, print or file writing inside.
+# Timing (time.perf_counter)
 # ------------------------------------------------------------------ #
 def run_timing(N, V, K, salt):
-    """One timing round of the consistent-hashing system."""
     result = {"N": N, "V": V, "K": K, "salt": salt}
     hotel = SaltedHotel(salt)
 
@@ -108,19 +79,16 @@ def run_timing(N, V, K, salt):
     n = len(sample)
 
     if n > 0:
-        # 3a) search by guest id (dict lookup)
         t0 = time.perf_counter()
         for c, s in sample:
             hotel.search_by_guest(c, s)
         result["search_us"] = (time.perf_counter() - t0) / n * US
 
-        # 3b) search by (node_id, room_no)
         t0 = time.perf_counter()
         for node_id, room_no in addrs:
             hotel.search_by_room(node_id, room_no)
         result["search_room_us"] = (time.perf_counter() - t0) / n * US
 
-        # 3c) compute building from the ring (hash + binary search)
         t0 = time.perf_counter()
         for c, s in sample:
             hotel.find_building(c, s)
@@ -129,13 +97,11 @@ def run_timing(N, V, K, salt):
         result["search_us"] = result["search_room_us"] = None
         result["find_building_us"] = None
 
-    # 4) sort / list rooms
     t0 = time.perf_counter()
     rows = hotel.list_rooms()
     result["sort_ms"] = (time.perf_counter() - t0) * MS
     result["rows"] = len(rows)
 
-    # 5) add building N, then remove it again
     t0 = time.perf_counter()
     ok, report = hotel.add_building(N)
     result["add_building_ms"] = (time.perf_counter() - t0) * MS
@@ -149,11 +115,9 @@ def run_timing(N, V, K, salt):
 
 
 # ------------------------------------------------------------------ #
-# Memory (tracemalloc). Separate from timing.
+# Memory (tracemalloc)
 # ------------------------------------------------------------------ #
 def run_memory(N, V, K, salt):
-    """Python-traced memory added since the same starting point."""
-    # ring only (no guests)
     tracemalloc.start()
     try:
         base, _ = tracemalloc.get_traced_memory()
@@ -164,7 +128,6 @@ def run_memory(N, V, K, salt):
         tracemalloc.stop()
     del ring
 
-    # whole system (ring + guests)
     tracemalloc.start()
     try:
         base_current, _ = tracemalloc.get_traced_memory()
@@ -178,7 +141,7 @@ def run_memory(N, V, K, salt):
         "ring_mem_kib": (ring_current - base) / KIB,
         "mem_current_mib": (current - base_current) / MIB,
         "mem_peak_mib": (peak - base_current) / MIB,
-        "guest_count": hotel.guest_count,   # keeps hotel alive until here
+        "guest_count": hotel.guest_count,
     }
 
 
@@ -186,11 +149,6 @@ def run_memory(N, V, K, salt):
 # Moves: consistent hashing vs hash mod N (experiment B)
 # ------------------------------------------------------------------ #
 def run_moves(N, V, K, salt, keep_lists=False):
-    """Add 1 building and remove 1 building, each from a fresh system.
-
-    The new building gets ID N; the removed building is ID 0.
-    Same salt, guests and building IDs for both methods.
-    """
     rows, lists = [], {}
     cases = (("add", lambda h: h.add_building(N)),
              ("remove", lambda h: h.remove_building(0)))
@@ -204,11 +162,11 @@ def run_moves(N, V, K, salt, keep_lists=False):
             elapsed = (time.perf_counter() - t0) * MS
             moves = report["moves"]
             if method == "consistent" and action == "add":
-                rule_ok = all(m[3] == N for m in moves)     # only into new one
+                rule_ok = all(m[3] == N for m in moves)
             elif method == "consistent":
-                rule_ok = all(m[2] == 0 for m in moves)     # only out of removed one
+                rule_ok = all(m[2] == 0 for m in moves)
             else:
-                rule_ok = ""                                 # no such rule for mod N
+                rule_ok = ""
             rows.append({
                 "N": N, "V": V, "K": K, "salt": salt,
                 "method": method, "action": action,

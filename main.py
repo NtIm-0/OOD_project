@@ -1,10 +1,3 @@
-"""Text menu for the Distributed Hilbert's Hotel.
-
-Run:  python main.py
-
-All logic lives in hotel.py; this file only reads input and prints results.
-Bad input is refused with a message and the menu keeps running.
-"""
 import os
 
 from hotel import HotelSystem

@@ -14,15 +14,10 @@ class HotelSystem:
         result = hashlib.sha256(data).digest()
         return int.from_bytes(result[:8], "big")
 
-#เพิ่ม node position and node key ให้ใช้ pattern เดียวกันเสมอ , node key ไว้คืน key
     def _node_position(self, building_id: int, j: int):
         return self._hash_position(f"node:{building_id}:{j}")
  
-    # @staticmethod
-    # def _node_key(node):
-    #     return (node.id, node.building.id, node.node_ind)
-
-    def init_setting(self, N, V, guests_per_channel):  ## เรียกครั้งเดียวตอน run 
+    def init_setting(self, N, V, guests_per_channel):
         self.__max_node = V
         self.__guests_per_channel = guests_per_channel.copy()
 
@@ -41,7 +36,6 @@ class HotelSystem:
             key=lambda n: (n.id, n.building.id, n.node_ind)
         )
 
-        # The ring must be complete before any guest chooses a building.
         for channel_id in self.__guests_per_channel:
             count = self.__guests_per_channel[channel_id]
             for sequence_id in range(1, count + 1):
@@ -92,11 +86,9 @@ class HotelSystem:
             
         self.__node_line.append(node)
 
-    
-    # --------------------------------------------------- #
-    # ======= ADD/REMOVE GUEST FUNCTION ======= #
-    # --------------------------------------------------- #
-    
+    # ---------------------------------------- #
+    # ADD/REMOVE GUEST FUNCTION
+    # ---------------------------------------- #
     def get_guest(self, channel_id: int, sequence_id: int):
         return self.__guests.get((channel_id, sequence_id))
     
@@ -134,11 +126,9 @@ class HotelSystem:
         if type(count) is not int or count < 0:
             raise ValueError("Count must be a positive integer.")
         
-        # 0 guests to be added = no change
         if count == 0:
             return True, ()
 
-        # if some guest already exist, deny all
         for s in range(s_start, s_start + count):
             if (channel_id, s) in self.__guests:
                 return False, f"Batch denied: Guest ({channel_id}, {s}) already exist."
@@ -179,9 +169,9 @@ class HotelSystem:
 
         return True, guest
 
-    # --------------------------------------------------- #
-    # ======= ADD/REMOVE BUILDING FUNCTION ======= #
-    # --------------------------------------------------- #
+    # ------------------------------------------------------------------ #
+    # ADD/REMOVE BUILDING FUNCTION
+    # ------------------------------------------------------------------ #
  
     def add_building(self, building_id: int):
         if not self.__node_line:
@@ -191,21 +181,18 @@ class HotelSystem:
         if building_id in self.__building:
             return False, f"Building {building_id} already exists."
  
-        # สร้างอาคารใหม่ แทรกเฉพาะ V จุดของอาคารนั้นด้วย
         new_building = Building(building_id)
         self.__building[building_id] = new_building
         for j in range(self.__max_node):
             node = Node(self._node_position(building_id, j), new_building, j)
             bisect.insort(self.__node_line, node, key=lambda n: n.key)
  
-        # ตรวจใหม่ทุกคน เทียบอาคารเดิมกับที่วงแหวนใหม่ให้มา
         to_move = []
         for guest in self.__guests.values():
             target = self.find_building(*guest.id)
             if target is not guest.building:
                 to_move.append((guest, target))
  
-        # (c) เอาห้องออกจากอาคารเก่า → ใส่ห้องเข้าอาคารใหม่
         moves = self._relocate(to_move)
         return True, self._move_report("add", building_id, moves)
  
@@ -221,19 +208,16 @@ class HotelSystem:
         if len(self.__building) == 1:
             return False, "Cannot remove the last building (N must stay >= 1)."
  
-        # ปรับวงแหวน
         self.__node_line = [
             n for n in self.__node_line if n.building is not building
         ]
         del self.__building[building_id]
  
-        # หาแขกที่ต้องย้าย
         to_move = [
             (room.guest, self.find_building(*room.guest.id))
             for room in building.rooms
         ]
  
-        #ย้ายและรายงาน
         moves = self._relocate(to_move)
         return True, self._move_report("remove", building_id, moves)
  
@@ -265,7 +249,7 @@ class HotelSystem:
             "moved_count": len(moves),
             "move_rate": rate,
             "note": note,
-            "moves": tuple(moves)  # (c, s, old_building, new_building, room_no)
+            "moves": tuple(moves) 
         } 
     
     def search_by_guest(self, channel_id: int, sequence_id: int):
@@ -282,7 +266,7 @@ class HotelSystem:
 
 
     def search_by_room(self, node_id: int, room_no: int):
-        if type(node_id) is not int or node_id < 0: #แก้จาก 1 เป็น 0 เพราะตอนแรกที่วน วนเริ่มจาก 0 แต่อันนี้เริ่มที่ 1 
+        if type(node_id) is not int or node_id < 0:
             raise ValueError("Node ID must be a positive integer.")
         if type(room_no) is not int or room_no < 1:
             raise ValueError("Room ID must be a positive integer.")
@@ -296,13 +280,7 @@ class HotelSystem:
             return False, f"Room {room_no} in building {node_id} not found."
         return True, room.guest.id
 
-#แสดงรายการห้องที่มีผู้พัก เรียงตาม node_id จากน้อยไปมาก และเรียง room_no 
-# แบบตัวเลขจากน้อยไปมากภายในแต่ละอาคาร
     def list_rooms(self):
-        """Occupied rooms sorted by node_id, then room_no (both numeric).
-
-        Returns a tuple of (node_id, room_no, channel_id, sequence_id).
-        """
         rows = []
         for building_id in sorted(self.__building):
             building = self.__building[building_id]
@@ -345,8 +323,6 @@ class HotelSystem:
             "note" : None
         }
 
-
-
     @property
     def buildings(self):
         return tuple(self.__building.values())
@@ -386,33 +362,18 @@ class Guest:
             raise ValueError("Channel ID must be a positive integer.")
         if type(sequence_id) is not int or sequence_id < 1:
             raise ValueError("Sequence ID must be a positive integer.")
-        
-        # ----- แก้จากของเพื่อน เป็นใช้ element id แทน ----
-        # self.__channel_id = channel_id
-        # self.__sequence_id = sequence_id
         self.__id = (channel_id,sequence_id)
         self.__building = building
 
-        # Cantor pairing uses only the guest ID, never the building.
+        # Cantor pairing
         a = channel_id - 1
         b = sequence_id - 1
         self.__room_no = ((a + b) * (a + b + 1)) // 2 + b + 1
 
-    # @property
-    # def id(self):
-    #     return self.__channel_id, self.__sequence_id
 
     @property
     def id(self):
         return self.__id
-
-    # @property
-    # def channel_id(self):
-    #     return self.__channel_id
-
-    # @property
-    # def sequence_id(self):
-    #     return self.__sequence_id
 
     @property
     def building(self):

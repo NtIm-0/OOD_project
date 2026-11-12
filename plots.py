@@ -1,24 +1,3 @@
-"""Draw the three required graphs (project section 7.2) from experiment CSV files.
-
-Usage:
-    python plots.py                    # reads results/*.csv, writes results/figures/*.png
-    python plots.py --in results --out results/figures
-
-Needs matplotlib (pip install matplotlib). Only reads CSV files; it never runs
-the hotel code, so experiments and plotting stay separate.
-
-Expected CSV files (one row per run; each setting is run with salt 0, 1, 2):
-
-  exp_A.csv  K,N,V,salt,build_ring_ms,assign_guests_ms,search_us,sort_ms,
-             mem_current_mib,mem_peak_mib
-  exp_B.csv  N,V,K,salt,method,action,moved,move_rate,time_ms
-             method = consistent | mod_n      action = add | remove
-  exp_C.csv  V,N,K,salt,cv,max,min,ring_mem_kib,mem_current_mib,mem_peak_mib
-             ring_mem_kib = memory of the ring alone (init with no guests)
-
-Every graph shows the median of the 3 salts as the line and the min-max range
-of the 3 salts as error bars.
-"""
 import argparse
 import csv
 import os
@@ -27,11 +6,10 @@ from collections import defaultdict
 
 import matplotlib
 
-matplotlib.use("Agg")  # write files only, no window
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 
-# Validated categorical colors (fixed order) + neutral ink for text and axes.
 BLUE = "#2a78d6"
 ORANGE = "#eb6834"
 AQUA = "#1baf7a"
@@ -49,7 +27,6 @@ def read_rows(path):
 
 
 def summarise(rows, x_key, y_key, keep=lambda r: True):
-    """Group rows by x and return xs, medians, lower errors, upper errors."""
     groups = defaultdict(list)
     for r in rows:
         if keep(r) and r[y_key] not in ("", "None"):
@@ -140,7 +117,7 @@ def plot_time_vs_k(rows, out_dir):
 
 
 # --------------------------------------------------------------- #
-# Graph (b): move rate vs N, both methods
+# Graph (b): move rate vs N
 # --------------------------------------------------------------- #
 def plot_move_rate_vs_n(rows, out_dir):
     fig, axes = plt.subplots(1, 2, figsize=(12, 4.4), sharey=True)
@@ -177,7 +154,7 @@ def plot_move_rate_vs_n(rows, out_dir):
 
 
 # --------------------------------------------------------------- #
-# Graph (c): effect of V on CV and memory (two panels, never two y-axes)
+# Graph (c): effect of V on CV and memory
 # --------------------------------------------------------------- #
 def plot_v_effect(rows, out_dir):
     has_ring = "ring_mem_kib" in rows[0]
@@ -220,8 +197,6 @@ def plot_v_effect(rows, out_dir):
     fig.tight_layout(rect=(0, 0.05, 1, 0.95))
     save(fig, out_dir, "graph_c_V_effect.png")
 
-
-# --------------------------------------------------------------- #
 def main():
     parser = argparse.ArgumentParser(description="Plot experiment results.")
     parser.add_argument("--in", dest="in_dir", default="results")
@@ -241,7 +216,6 @@ def main():
             print(f"skip {name}: no rows")
             continue
         plot(rows, args.out_dir)
-
 
 if __name__ == "__main__":
     main()
