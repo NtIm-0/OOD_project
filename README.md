@@ -27,6 +27,7 @@ the program reports who moved and compares the result with `hash mod N`.
 | `test_HotelSystem.py` | Automated tests for the core rules |
 | `test_mod_n.py` | Tests for `hash mod N` |
 | `test_export.py` | Tests for CSV export (row count = guest count) |
+| `test_edge_cases.py` | Edge cases of section 4.5 and setup checks |
 
 ## Run the program
 
@@ -55,10 +56,10 @@ Option 11 writes to `output/`.
 ## Run the tests
 
 ```
-python -m unittest test_HotelSystem test_mod_n test_export -v
+python -m unittest test_HotelSystem test_mod_n test_export test_edge_cases -v
 ```
 
-Expected: `Ran 55 tests ... OK`
+Expected: `Ran 63 tests ... OK`
 
 ## Run the experiments and graphs
 
@@ -74,6 +75,8 @@ python plots.py
 | `exp_A.csv` | Time and memory vs K = 1,000 / 10,000 / 100,000 (N = 10, V = 32) |
 | `exp_B.csv` | Moves when adding/removing 1 building, consistent hashing vs hash mod N, N = 5 / 10 / 20 (K = 10,000, V = 32) |
 | `exp_C.csv` | CV, max, min and memory vs V = 1 / 8 / 32 (N = 10, K = 10,000) |
+| `exp_C_loads.csv` | Guests in every building, for each V and salt |
+| `guests_sample_N10_V32_K10000_salt0.csv` | Sample guest data: channel_id, sequence_id, node_id, room_no |
 | `moves_*.csv` | Example move lists (N = 10, salt 0) for both methods |
 | `run_info.txt` | Python version, machine, salts and parameters |
 | `figures/*.png` | Graphs (a) time vs K, (b) move rate vs N, (c) effect of V |

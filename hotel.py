@@ -19,7 +19,21 @@ class HotelSystem:
  
     def init_setting(self, N, V, guests_per_channel):
         self.__max_node = V
-        self.__guests_per_channel = guests_per_channel.copy()
+        self.__guests_per_channel = {
+            c: n for c, n in guests_per_channel.items() if n > 0
+        }
+
+        if self.__node_line:
+            raise ValueError("Hotel is already initialized.")
+        if type(N) is not int or N < 1:
+            raise ValueError("N must be a positive integer.")
+        if type(V) is not int or V < 1:
+            raise ValueError("V must be a positive integer.")
+        for channel_id, count in guests_per_channel.items():
+            if type(channel_id) is not int or channel_id < 1:
+                raise ValueError("Channel ID must be a positive integer.")
+            if type(count) is not int or count < 0:
+                raise ValueError("Guest count must be a non-negative integer.")
 
         for i in range(N):
             building = Building(i)
