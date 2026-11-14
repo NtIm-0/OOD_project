@@ -138,7 +138,7 @@ class HotelSystem:
         if type(s_start) is not int or s_start < 1:
             raise ValueError("Starting sequence ID must be a positive integer.")
         if type(count) is not int or count < 0:
-            raise ValueError("Count must be a positive integer.")
+            raise ValueError("Count must be a non-negative integer.")
         
         if count == 0:
             return True, ()
@@ -281,7 +281,7 @@ class HotelSystem:
 
     def search_by_room(self, node_id: int, room_no: int):
         if type(node_id) is not int or node_id < 0:
-            raise ValueError("Node ID must be a positive integer.")
+            raise ValueError("Node ID must be a non-negative integer.")
         if type(room_no) is not int or room_no < 1:
             raise ValueError("Room ID must be a positive integer.")
         
